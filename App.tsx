@@ -1,5 +1,5 @@
-import { StatusBar } from 'expo-status-bar';
-import HomeScreen from './src/screens/homeScreen';
+import { StatusBar } from "expo-status-bar";
+import HomeScreen from "./src/screens/homeScreen";
 
 export default function App() {
   return (

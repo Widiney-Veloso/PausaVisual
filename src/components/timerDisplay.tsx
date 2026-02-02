@@ -5,13 +5,12 @@ interface Props {
 }
 
 export default function TimerDisplay({ tempo }: Props) {
-  const minutos = Math.floor(tempo / 60);
-  const segundos = tempo % 60;
+  const minutos = String(Math.floor(tempo / 60)).padStart(2, "0");
+  const segundos = String(tempo % 60).padStart(2, "0");
 
   return (
     <Text style={styles.text}>
-      Tempo de uso: {minutos}:{segundos < 10 ? "0" : ""}
-      {segundos}
+      Tempo de uso: {minutos}:{segundos}
     </Text>
   );
 }

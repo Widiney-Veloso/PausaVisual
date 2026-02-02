@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, Button } from "react-native";
 
-import { useAccelerometer } from "..//hooks/useAceclerometer";
+import { useAccelerometer } from "../hooks/useAcelerometer";
 import {
   estaEmUso,
   TEMPO_ALERTA,
@@ -15,32 +15,50 @@ export default function HomeScreen() {
   const [monitorando, setMonitorando] = useState(false);
   const [tempoUso, setTempoUso] = useState(0);
   const [emUso, setEmUso] = useState(false);
-  const [alerta, setAlerta] = useState(false);
-  const [repousoTempo, setRepousoTempo] = useState(0);
+  const [tempoEmPausa, setTempoEmPausa] = useState(0);
+
+  const intervaloRef = useRef<NodeJS.Timeout | null>(null);
 
   const { x, y } = useAccelerometer(monitorando);
 
+  // 🚨 alerta DERIVADO (sem bug)
+  const alerta = monitorando && tempoUso >= TEMPO_ALERTA;
+
+  // 1️⃣ Detecta uso / pausa (sensor NÃO conta tempo)
   useEffect(() => {
     if (!monitorando) return;
 
-    if (estaEmUso(x, y)) {
-      setEmUso(true);
-      setRepousoTempo(0);
-      setTempoUso((prev) => prev + 1);
-    } else {
-      setEmUso(false);
-      setRepousoTempo((prev) => prev + 1);
+    const usando = estaEmUso(x, y);
+    setEmUso(usando);
+  }, [x, y, monitorando]);
 
-      if (repousoTempo >= TEMPO_REPOUSO_RESET) {
-        setTempoUso(0);
-        setAlerta(false);
+  // 2️⃣ Relógio REAL (1 segundo)
+  useEffect(() => {
+    if (!monitorando) return;
+
+    intervaloRef.current = setInterval(() => {
+      if (emUso) {
+        setTempoUso((prev) => prev + 1);
+        setTempoEmPausa(0);
+      } else {
+        setTempoEmPausa((prev) => prev + 1);
       }
-    }
+    }, 1000);
 
-    if (tempoUso >= TEMPO_ALERTA) {
-      setAlerta(true);
+    return () => {
+      if (intervaloRef.current) {
+        clearInterval(intervaloRef.current);
+      }
+    };
+  }, [monitorando, emUso]);
+
+  // 3️⃣ Carência anti-burla
+  useEffect(() => {
+    if (tempoEmPausa >= TEMPO_REPOUSO_RESET) {
+      setTempoUso(0);
+      setTempoEmPausa(0);
     }
-  }, [x, y]);
+  }, [tempoEmPausa]);
 
   return (
     <View style={[styles.container, alerta && styles.alerta]}>
@@ -49,6 +67,10 @@ export default function HomeScreen() {
       <StatusIndicator emUso={emUso} />
 
       <TimerDisplay tempo={tempoUso} />
+
+      <Text style={styles.sensorText}>
+        Inclinação X: {x.toFixed(2)} | Y: {y.toFixed(2)}
+      </Text>
 
       {alerta && (
         <Text style={styles.alertaText}>
@@ -59,15 +81,19 @@ export default function HomeScreen() {
       <Button
         title={monitorando ? "Parar Monitoramento" : "Iniciar Monitoramento"}
         onPress={() => {
-          setMonitorando(!monitorando);
+          setMonitorando((prev) => !prev);
           setTempoUso(0);
-          setAlerta(false);
+          setTempoEmPausa(0);
+          setEmUso(false);
+
+          if (intervaloRef.current) {
+            clearInterval(intervaloRef.current);
+          }
         }}
       />
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -89,5 +115,11 @@ const styles = StyleSheet.create({
     color: "#b00000",
     fontWeight: "bold",
     marginBottom: 20,
+    textAlign: "center",
+  },
+  sensorText: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 15,
   },
 });
