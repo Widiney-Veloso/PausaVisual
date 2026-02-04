@@ -38,7 +38,7 @@ export default function HomeScreen() {
 
 
 
-  // Relógio REAL (1 segundo)
+  // Relógio REAL
   useEffect(() => {
     if (!monitorando) return;
 
