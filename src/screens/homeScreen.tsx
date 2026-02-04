@@ -12,53 +12,66 @@ import TimerDisplay from "../components/timerDisplay";
 import StatusIndicator from "../components/statusIndicator";
 
 export default function HomeScreen() {
-  const [monitorando, setMonitorando] = useState(false);
-  const [tempoUso, setTempoUso] = useState(0);
-  const [emUso, setEmUso] = useState(false);
-  const [tempoEmPausa, setTempoEmPausa] = useState(0);
+  const [monitorando, setMonitorando] = useState(false); //inicia sem monitoramento
+  const [tempoUso, setTempoUso] = useState(0); // tempo de uso zerado (inicio)
+  const [emUso, setEmUso] = useState(false); //sem uso do acelerometro
+  const [tempoEmPausa, setTempoEmPausa] = useState(0); //tempo de pausa zerado (inicio)
 
   const intervaloRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { x, y } = useAccelerometer(monitorando);
+  const { x, y } = useAccelerometer(monitorando); //conexão com o sensor
 
-  // 🚨 alerta DERIVADO (sem bug)
   const alerta = monitorando && tempoUso >= TEMPO_ALERTA;
 
-  // 1️⃣ Detecta uso / pausa (sensor NÃO conta tempo)
+
+
+  // Detecta se celular está em uso / pausa
   useEffect(() => {
     if (!monitorando) return;
+    
+    //esse bloco verifica se o celular está em uso ou não
 
     const usando = estaEmUso(x, y);
     setEmUso(usando);
-  }, [x, y, monitorando]);
+  }, [x, y, monitorando]); //é acionado por isso <-
 
-  // 2️⃣ Relógio REAL (1 segundo)
+
+
+
+  // Relógio REAL (1 segundo)
   useEffect(() => {
     if (!monitorando) return;
 
-    intervaloRef.current = setInterval(() => {
+    intervaloRef.current = setInterval(() => { //cria um intervalo
       if (emUso) {
-        setTempoUso((prev) => prev + 1);
+        setTempoUso((prev) => prev + 1); //se tiver em uso, conta o tempo em uso
         setTempoEmPausa(0);
       } else {
-        setTempoEmPausa((prev) => prev + 1);
+        setTempoEmPausa((prev) => prev + 1); //se não tiver, conta o tempo em pausa
       }
-    }, 1000);
+    }, 1000 /*milissegundos*/);
 
     return () => {
       if (intervaloRef.current) {
-        clearInterval(intervaloRef.current);
+        clearInterval(intervaloRef.current); //limpa o intervalo anterior e evita criar mais de um intervalo
       }
     };
-  }, [monitorando, emUso]);
+  }, [monitorando, emUso]); //acionado por isso <-
 
-  // 3️⃣ Carência anti-burla
+
+
+
+  // Carência anti-burla, faz a verificação de tempo de pausa e reseta
   useEffect(() => {
     if (tempoEmPausa >= TEMPO_REPOUSO_RESET) {
       setTempoUso(0);
       setTempoEmPausa(0);
     }
-  }, [tempoEmPausa]);
+  }, [tempoEmPausa]); //acionado por isso <-
+
+
+
+
 
   return (
     <View style={[styles.container, alerta && styles.alerta]}>
